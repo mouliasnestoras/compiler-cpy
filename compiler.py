@@ -58,7 +58,7 @@ def lexicalAnalyzer():
     ## The format of the return set is (token_type, value, line, index)
     return (token_type, 0, 0, 0)
 
-
+### The main function for all processes
 def startProcessing():
     lexicalAnalyzer()
     
