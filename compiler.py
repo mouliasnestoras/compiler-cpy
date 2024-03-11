@@ -17,7 +17,7 @@ def lexicalAnalyzer():
         return (token_type, 0, code_line)
 
     ## Checking for white spaces
-    ##print(current_char)
+    
     while (next_char == " " or next_char == "\n" or next_char == "\t"):
         if (next_char == "\n"):
             code_line += 1
@@ -90,8 +90,16 @@ def lexicalAnalyzer():
         next_char = code_file.read(1)
             
         while (next_char.isalpha() or next_char.isdigit()):
-            current_char += next_char
+           
             next_char = code_file.read(1)
+            if(not next_char.isalpha() and not next_char.isdigit()):
+                if(next_char):
+                    code_file.seek(code_file.tell() - 1)
+                    break
+            current_char += next_char
+          
+            ##print(next_char)
+            ##print(current_char)
         if(next_char):
             code_file.seek(code_file.tell() - 1)
 
