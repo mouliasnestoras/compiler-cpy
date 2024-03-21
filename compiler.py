@@ -307,27 +307,44 @@ def checkIdentifier():
 def optionalSign():
     global token
     if(token.recognized_token == "+" or token.recognized_token == "-"):
+        
         token = nextToken()
     else:
         return
 
+
+
 def expression():
     global token
     global token_index
+    global code_line
+    check_line = token.line_number
     optionalSign()
+    
     if(token.token_type == "NUMBER"):
         token = nextToken()
-        while(token.token_type == "OPERATOR"):
-            token = nextToken()
-            if(token.token_type == "NUMBER"):
+        if(token.token_type == "OPERATOR"):
+
+            while(token.token_type == "OPERATOR"):
                 token = nextToken()
-            elif(token.recognised_token == "("):
-                parenthesis()
-            else:
-                print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
-                sys.exit(0)
+                if(token.token_type == "NUMBER"):
+                    token = nextToken()
+                elif(token.recognized_token == "("):
+                    parenthesis()
+                else:
+                    print("DEBUG1: expression()")
+                    print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
+                    sys.exit(0)
+        elif(check_line != token.line_number or token.token_type == "CORRELATION" or token.recognized_token == "and" or token.recognized_token == "or" or token.token_type == "SEPERATOR"):
+            return
+        else:
+            
+            print("DEBUG2: expression()")
+            print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
     else:
+        print("DEBUG3: expression()")
         print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
+        #sys.exit(0)
                 
 def parenthesis():
     global token
@@ -347,8 +364,9 @@ def condition():
     global token
     token = nextToken()
     expression()
-    if (token.recognized_token == "CORRELATION"):
+    if (token.token_type == "CORRELATION"):
         token = nextToken()
+        
         expression()
         while (token.recognized_token == "and" or token.recognized_token == "or"):
             token = nextToken()
@@ -360,6 +378,7 @@ def condition():
                 print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " " + token.recognized_token + " recieved")
                 sys.exit(0)
     else:
+        print("DEBUG: condition()")
         print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " " + token.recognized_token + " recieved")
         sys.exit(0)
 
@@ -368,19 +387,19 @@ def condition():
 ## Check the syntax of elif statement
 def elifStatement():
     global token
-    token = nextToken()
+    
     condition()
     if (token.recognized_token == ":"):
         token = nextToken()
         if (token.recognized_token == "#{"):
             token = nextToken()
-            statements()
+            statement()
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: elifStatement()")
                     print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
                     sys.exit(0)
-                statements()
+                statement()
                 token = nextToken()
             token = nextToken()
         else:
@@ -402,13 +421,13 @@ def elseStatement():
         token = nextToken()
         if (token.recognized_token == "#{"):
             token = nextToken()
-            statements()
+            statement()
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: elseStatement()")
                     print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
                     sys.exit(0)
-                statements()
+                statement()
                 token = nextToken()
             token = nextToken()
         else:
@@ -421,22 +440,25 @@ def elseStatement():
 ## Check the syntax of if statement don't check for declarations
 def ifStatement():
     global token
-    token = nextToken()
+    check_line = token.line_number 
     condition()
     if (token.recognized_token == ":"):
         token = nextToken()
         if (token.recognized_token == "#{"):
             token = nextToken()
-            statements()
+            statement()
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: ifStatement()")
                     print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
                     sys.exit(0)
-                statements()
+                statement()
                 token = nextToken()
             token = nextToken()
+        elif(check_line != token.line_number):
+            return
         else:
+            print("hi")
             expression()
     else:
         print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
@@ -455,13 +477,13 @@ def whileStatement():
         token = nextToken()
         if (token.recognized_token == "#{"):
             token = nextToken()
-            statements()
+            statement()
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: whileStatement()")
                     print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
                     sys.exit(0)
-                statements()
+                statement()
                 token = nextToken()
             token = nextToken()
         else:
@@ -552,6 +574,7 @@ def statement():
         token = nextToken()
     if (token.recognized_token == "if"):
         ifStatement()
+    
     elif (token.recognized_token == "while"):
         whileStatement()
     elif (token.recognized_token == "print"):
@@ -566,26 +589,29 @@ def statement():
 
 def returnStatement():
     global token
-    print("hi")
+    check_line = token.line_number
     token = nextToken()
+    if(check_line != token.line_number):
+        return
     expression()
 
-def statements():
-    token = nextToken()
+# def statements():
+#     token = nextToken()
     
-    if(token.recognized_token == "#{"):
-        block_init = token.line_number
-        token = nextToken()
-        statement()
-        while (token.recognized_token != "#}"):
-            if (token.token_type == "EOF"):
-                print("DEBUG: statements()")
-                print("Syntax error in line " + str(block_init) + ": Block started but never closed")
-                sys.exit(0)
-            statement()
-            token = nextToken()
-    else:
-        statement()
+#     if(token.recognized_token == "#{"):
+#         block_init = token.line_number
+#         token = nextToken()
+#         statement()
+#         while (token.recognized_token != "#}"):
+#             if (token.token_type == "EOF"):
+#                 print("DEBUG: statements()")
+#                 print("Syntax error in line " + str(block_init) + ": Block started but never closed")
+#                 sys.exit(0)
+#             statement()
+#             token = nextToken()
+#     else:
+        
+#         statement()
     
 def declarations():
     global token
@@ -628,13 +654,13 @@ def subPrograms():
                             globalStatement()
                             subPrograms()
                             
-                            statements()
+                            statement()
                             while (token.recognized_token != "#}"):
                                 if (token.token_type == "EOF"):
                                     print("DEBUG: subPrograms()")
                                     print("Syntax error: Block \"#{\" started but never closed")
                                     sys.exit(0)
-                                statements()
+                                statement()
                                 token = nextToken()
                             token = nextToken()
                         else:
