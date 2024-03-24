@@ -1,5 +1,16 @@
-from asyncio.windows_events import NULL
 import sys
+
+keywords = ("main", "def", "#def", "#int", "global", "if", "elif", "else", "while", "print", "return", "input", "int", "and", "or", "not")
+separators = (":", ",")
+operations = ("//", "+", "*", "-", "%")
+correlations = ("<", "<=", ">", ">=", "==", "!=")
+assignment = ("=")
+blocks = ("(", ")", "#{", "#}")
+
+functions = {}
+variables = []
+token_index = -1
+tokens = []
 
 ### Classes
 class Token:
@@ -15,246 +26,92 @@ class Token:
 ### Functions
 
 ## Lexical Analyzer 
-def lexicalAnalyzer():
-    global code_line
-    global code_file
-    global eof_flag
-    
-    token_type = "EOF"
+def lexicalAnalyzer(input_text):
+    recognized_tokens = []
+    tokens = []
+    i = 0
+    line_number = 1
 
-    current_char = ''
-    next_char = code_file.read(1)
-    
-    ## Checking if the file is empty
-    if (not next_char):
-        eof_flag = True
-        return (token_type, 0, code_line)
-
-    ## Checking for white spaces
-    while (next_char == ' ' or next_char == '\n' or next_char == '\t'):
-        if (next_char == '\n'):
-            code_line += 1
-
-        next_char = code_file.read(1)
-
-        if (not next_char):
-            eof_flag = True
-            return (token_type, "", code_line)
-
-    ## Checking for comments or open or closed brackets
-    if (next_char == '#'):
-        current_char = next_char
-        next_char = code_file.read(1)
-
-        if (next_char == '#'):
-            current_char = next_char
-            next_char = code_file.read(1)
-
-            start_comment = code_line
-            
-            current_char = next_char
-            next_char = code_file.read(1)
-
-            while (next_char != '#' or current_char != '#'):
-                if (next_char == '\n'):
-                    code_line += 1
-        
-                if (not next_char):
-                    
-                    print("Syntax error in line " + str(start_comment) + ": Comment section started but never closed")
-                    sys.exit(0)
-                    
-                current_char = next_char
-                next_char = code_file.read(1)
-                
-            return(lexicalAnalyzer())
-            
+    while i < len(input_text):
+        if input_text[i] == ' ' or input_text[i] == '\t':
+            # Ignore whitespaces
+            i += 1
+        elif input_text[i] == '\n':
+            # Increment line number
+            line_number += 1
+            i += 1
+        elif input_text[i:i+2] == '##':
+            # Ignore comments
+            i += 2
+            while input_text[i:i+2] != '##':
+                i += 1
+            i += 2
+        elif input_text[i:i+2] in operations:
+            # Check for two-character operations
+            recognized_tokens.append(('OPERATOR', input_text[i:i+2], line_number))
+            i += 2
+        elif input_text[i:i+2] in correlations:
+            # Check for two-character correlations
+            recognized_tokens.append(('CORRELATION', input_text[i:i+2], line_number))
+            i += 2
+        elif input_text[i:i+2] in blocks:
+            # Check for two-character blocks
+            recognized_tokens.append(('BLOCK', input_text[i:i+2], line_number))
+            i += 2
+        elif input_text[i] in operations:
+            # Check for one-character operations
+            recognized_tokens.append(('OPERATOR', input_text[i], line_number))
+            i += 1
+        elif input_text[i] in correlations:
+            # Check for one-character correlations
+            recognized_tokens.append(('CORRELATION', input_text[i], line_number))
+            i += 1
+        elif input_text[i] in blocks:
+            # Check for one-character blocks
+            recognized_tokens.append(('BLOCK', input_text[i], line_number))
+            i += 1
+        elif input_text[i] in separators:
+            # Check for one-character separators
+            recognized_tokens.append(('SEPARATOR', input_text[i], line_number))
+            i += 1
+        elif input_text[i] in assignment:
+            # Check for assignment
+            recognized_tokens.append(('ASSIGNMENT', input_text[i], line_number))
+            i += 1
         else:
-            if (next_char.isalpha()):
-                while (next_char.isalpha()):
-                    current_char += next_char
-                    next_char = code_file.read(1)
-                
-                code_file.seek(code_file.tell() - 1)
-                
-                if (current_char in keywords):
-                    token_type = "KEYWORD"
-                    return (token_type, current_char, code_line)
-                else:
-                    print("Syntax error in line " + str(code_line) + ": Not recognizing the value \"" + current_char + "\"")
-                    sys.exit(0)
-        
-            elif (next_char == '{'):
-                current_char += next_char
-                token_type = "GROUP"
-                return (token_type, current_char, code_line)
-        
-            elif (next_char == '}'):
-                current_char += next_char
-                token_type = "GROUP"
-                return (token_type, current_char, code_line)
-            
+            # Identify keywords, identifiers, or integers
+            token = ''
+            while i < len(input_text) and input_text[i] not in (' ', '\n', '\t') and input_text[i] not in operations and input_text[i:i+2] not in operations and input_text[i] not in correlations and input_text[i:i+2] not in correlations and input_text[i:i+1] not in blocks and input_text[i] not in separators and input_text[i] not in assignment:
+                token += input_text[i]
+                i += 1
+            if token.isdigit():
+                recognized_tokens.append(('NUMBER', token, line_number))
+            elif token in keywords:
+                recognized_tokens.append(('KEYWORD', token, line_number))
             else:
-                print("Syntax error in line " + str(code_line) + ": Not recognizing the value \"" + current_char + "\"")
-                sys.exit(0)
-            
-    ## Checking if there is identifier or keyword       
-    elif (next_char.isalpha()):
-        current_char = next_char
-        next_char = code_file.read(1)
-            
-        while (next_char.isalpha() or next_char.isdigit()):
-            current_char += next_char
-            next_char = code_file.read(1)
-        
-        code_file.seek(code_file.tell() - 1)
-
-        if (current_char in keywords):
-            token_type = "KEYWORD"
-            return (token_type, current_char, code_line)
-        else:
-            token_type = "IDENTIFIER"
-            return (token_type, current_char, code_line)
-        
-    ## Checking for number
-    elif (next_char.isdigit()):
-        current_char = next_char
-        next_char = code_file.read(1)
-
-        while (next_char.isdigit()):
-            current_char += next_char
-            next_char = code_file.read(1)
-            
-        code_file.seek(code_file.tell() - 1)
-        
-        if (next_char.isalpha()):
-            print("Syntax error in line " + str(code_line) + ": Letter \"" + next_char + "\" found after digits \"" + current_char)
-            sys.exit(0)
-        
-        if (int(current_char) > 32767):
-            print("Syntax error in line " + str(code_line) + ": The given number \"" + current_char + "\" is out of bounds, accepted numbers [-32767, 32767]")
-            sys.exit(0)
-        
-        else:
-            token_type = "NUMBER"
-            return (token_type, current_char, code_line)
-
-    ## Checking for parentheses
-    elif (next_char == '(' or next_char == ')'):
-        current_char = next_char
-        token_type = "GROUP"
-        return (token_type, current_char, code_line)
+                recognized_tokens.append(('IDENTIFIER', token, line_number))
     
-    ## Checking for operator
-    elif (next_char == '+' or next_char == '-' or next_char == "*" or next_char == "%"):
-        current_char = next_char
-        token_type = "OPERATOR"
-        return (token_type, current_char, code_line)
- 
-    ## Checking for division operator
-    elif (next_char == '/'):
-        current_char = next_char
-        next_char = code_file.read(1)
-
-        if (next_char == '/'):
-            current_char += next_char
-            token_type = "OPERATOR"
-            return (token_type, current_char, code_line)
-            
-        else:
-            print("Syntax error in line " + str(code_line) + ": Not recognizing the value \"" + current_char + "\"")
-            sys.exit(0)
-   
-    ## Checking for seperator
-    elif (next_char == ':' or next_char == ','):
-        current_char = next_char
-        token_type = "SEPERATOR"
-        return (token_type, current_char, code_line)
-    
-    ## Checking for correlation or assigmnent
-    elif (next_char == '='):
-        current_char = next_char
-        next_char = code_file.read(1)
-        
-        if (next_char == '='):
-            current_char += next_char
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-        else:
-            code_file.seek(code_file.tell() - 1)
-            token_type = "ASSIGNMENT"
-            return (token_type, current_char, code_line)
-    
-    ## Checking for number correlation
-    elif (next_char == '<'):
-        current_char = next_char
-        next_char = code_file.read(1)
-        
-        if (next_char == '='):
-            current_char += next_char
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-        else:
-            code_file.seek(code_file.tell() - 1)
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-
-    ## Checking for number correlation
-    elif (next_char == '>'):
-        current_char = next_char
-        next_char = code_file.read(1)
-        
-        if (next_char == '='):
-            current_char += next_char
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-        else:
-            code_file.seek(code_file.tell() - 1)
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-
-    ## Checking for number correlation
-    elif (next_char == '!'):
-        current_char = next_char
-        next_char = code_file.read(1)
-        
-        if (next_char == '='):
-            current_char += next_char
-            token_type = "CORRELATION"
-            return (token_type, current_char, code_line)
-        else:
-            print("Syntax error in line " + str(code_line) + ": Invalid character after the character \"" + current_char + "\"")
-            sys.exit(0)
-
-    ## Print error message if there is invalid syntax
-    else:
-        current_char = next_char
-        print("Syntax error in line " + str(code_line) + ": Invalid syntax \"" + current_char + "\"")
-        sys.exit(0)
+    for token in recognized_tokens:
+        new_token = Token(token[1], token[0], token[2])
+        tokens.append(new_token)   
+    return tokens
 
 ## Return next token
 def nextToken():
     global token_index
     token_index += 1
-    return (tokens[token_index])
-
-def defineVariables():
-    global token
-    global variables
-    if (token.token_type == "IDENTIFIER"):
-        variables.append(token.recognized_token)
-        token = nextToken()
-        while (token.recognized_token == ","):
-            token = nextToken()
-            if (token.token_type == "IDENTIFIER"):
-                variables.append(token.recognized_token)
-                token = nextToken()
-            else:
-                print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-                sys.exit(0)
+    if token_index < len(tokens):
+        return tokens[token_index]
     else:
-        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-        sys.exit(0)
+        # If there are no more tokens, return a special token indicating end of file (EOF)
+        return Token("EOF", "EOF", -1)
+
+## Return previous token
+def previousToken():
+    global token_index
+    token_index -= 1
+    if token_index > -1:
+        return tokens[token_index]
 
 ## Create a function that checks if the IDENTIFIER is variable or function based on functions dictionary or variables list and also the syntax of function is correct based on the value of the key in the functions dictionary
 def checkIdentifier():
@@ -262,90 +119,56 @@ def checkIdentifier():
     global functions
     global variables
     if (token.token_type == "IDENTIFIER"):
-        if (token.recognized_token in variables):
-            token = nextToken()
-        elif (token.recognized_token in functions):
+        if (token.recognized_token in functions):
+            recognized_function = token.recognized_token
             token = nextToken()
             if (token.recognized_token == "("):
                 parameterCounter = 0
-                expression()
                 token = nextToken()
                 if (token.token_type == "IDENTIFIER" or token.token_type == "NUMBER"):
                     parameterCounter += 1
-                    token = nextToken()
+                    expression()
                     while (token.recognized_token == ","):
                         token = nextToken()
                         if (token.token_type == "IDENTIFIER" or token.token_type == "NUMBER"):
                             parameterCounter += 1
-                            token = nextToken()
+                            expression()
                         else:
-                            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER or NUMBER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                             sys.exit(0)
-                    if (parameterCounter == len(functions[token.recognized_token])):
-                        token = nextToken()
+                    if (parameterCounter == len(functions[recognized_function])):
                         if (token.recognized_token == ")"):
+                            
                             token = nextToken()
+                            print(token.recognized_token)
                         else:
-                            print("Syntax error in line " + str(token.line_number) + ": \")\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                            print("Syntax error in line " + str(token.line_number) + ": \")\" expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                             sys.exit(0)
                     else:
-                        print("Syntax error in line " + str(token.line_number) + ": The number of parameters in the function call is not correct")
+                        print("Syntax error in line " + str(token.line_number) + ": The number of parameters in the function call is not correct.")
                         sys.exit(0)
                 else:
-                    print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                    print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                     sys.exit(0)
             else:
-                print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but \"" + token.recognized_token + "\" recieved.")
                 sys.exit(0)
-        else:
-            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        elif (token.recognized_token in keywords):
+            print("Syntax error in line " + str(token.line_number) + ": The keyword \"" + token.recognized_token + "\" cannot be used as a variable.")
             sys.exit(0)
+        else:
+            token = nextToken()
     else:
-        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
         sys.exit(0)
 
 def optionalSign():
     global token
     if(token.recognized_token == "+" or token.recognized_token == "-"):
-        
         token = nextToken()
     else:
         return
-
-
-
-def expression():
-    global token
-    global token_index
-    global code_line
-    check_line = token.line_number
-    optionalSign()
     
-    if(token.token_type == "NUMBER"):
-        token = nextToken()
-        if(token.token_type == "OPERATOR"):
-
-            while(token.token_type == "OPERATOR"):
-                token = nextToken()
-                if(token.token_type == "NUMBER"):
-                    token = nextToken()
-                elif(token.recognized_token == "("):
-                    parenthesis()
-                else:
-                    print("DEBUG1: expression()")
-                    print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
-                    sys.exit(0)
-        elif(check_line != token.line_number or token.token_type == "CORRELATION" or token.recognized_token == "and" or token.recognized_token == "or" or token.token_type == "SEPERATOR"):
-            return
-        else:
-            
-            print("DEBUG2: expression()")
-            print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
-    else:
-        print("DEBUG3: expression()")
-        print("Syntax error in line " + str(token.line_number) + ": Invalid expression")
-        #sys.exit(0)
-                
 def parenthesis():
     global token
     if(token.recognized_token == "("):
@@ -353,41 +176,111 @@ def parenthesis():
         expression()
         if(token.recognized_token == ")"):
             token = nextToken()
+            if (token.token_type == "OPERATOR"):
+                token = nextToken()
+                expression()
         else:
-            print("Syntax error in line " + str(token.line_number) + ": \")\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+            print("Syntax error in line " + str(token.line_number) + ": One parenthesis never closed.")
             sys.exit(0)
     else:
-        print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-        sys.exit(0)                
+        print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but \"" + token.recognized_token + "\" recieved.")
+        sys.exit(0)   
+
+def expression():
+    global token
+    global token_index
+    global code_line
+    check_line = token.line_number
+    optionalSign()
+    if (token.token_type == "NUMBER"):
+        token = nextToken()
+        if (token.token_type == "OPERATOR"):
+            token = nextToken()
+            if (token.token_type == "NUMBER"):
+                expression()
+            elif (token.token_type == "IDENTIFIER"):
+                checkIdentifier()
+                token = previousToken()
+                expression()
+            elif (token.recognized_token == "("):
+                parenthesis()
+            else:
+                print("Syntax error in line " + str(check_line) + ": Invalid expression." + token.recognized_token)
+                sys.exit(0)
+        elif (check_line != token.line_number or token.recognized_token in separators or token.recognized_token in correlations or token.recognized_token in keywords or token.recognized_token == ")"):
+            return
+        else:
+            print("Syntax error in line " + str(check_line) + ": Invalid expression. " + token.recognized_token)
+            sys.exit(0)
+    elif (token.token_type == "IDENTIFIER"):
+        checkIdentifier()
+        if (token.token_type == "OPERATOR"):
+            token = nextToken()
+            if (token.token_type == "NUMBER"):
+                expression()
+            elif (token.token_type == "IDENTIFIER"):
+                checkIdentifier()
+                token = previousToken()
+                expression()
+            elif (token.recognized_token == "("):
+                parenthesis()
+            else:
+                
+                print("Syntax error in line " + str(check_line) + ": Invalid expression.1" + token.recognized_token)
+                sys.exit(0)
+        elif (check_line != token.line_number or token.recognized_token in separators or token.recognized_token in correlations or token.recognized_token == "and" or token.recognized_token == "or" or token.recognized_token == ")"):
+            return
+        else:
+            print("Syntax error in line " + str(check_line) + ": Invalid expression.2" + token.recognized_token)
+            sys.exit(0)
+    elif (token.recognized_token == "("):
+        parenthesis()
+    elif (check_line != token.line_number or token.recognized_token in separators or token.recognized_token in correlations or token.recognized_token == "and" or token.recognized_token == "or" or token.recognized_token == ")"):
+        return
+    else:
+        print("Syntax error in line " + str(token.line_number) + ": Invalid expression.3")
+        sys.exit(0)
+
+def invalidExpression(caller):
+    global token
     
+    if (caller == "return" or caller == "print"):
+        if (token.recognized_token in separators or token.recognized_token in correlations or token.recognized_token == "and" or token.recognized_token == "or"  or token.recognized_token == ")"):
+            return True
+        else:
+            return False
+    elif (caller == "condition"):
+        if(token.recognized_token in separators):
+            return True
+        else:
+            return False
+    
+    
+
 def condition():
     global token
     token = nextToken()
     expression()
     if (token.token_type == "CORRELATION"):
         token = nextToken()
-        
         expression()
         while (token.recognized_token == "and" or token.recognized_token == "or"):
             token = nextToken()
             expression()
-            if (token.recognized_token == "CORRELATION"):
+            if (token.token_type == "CORRELATION"):
                 token = nextToken()
                 expression()
             else:
-                print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                 sys.exit(0)
     else:
         print("DEBUG: condition()")
-        print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": CORRELATION expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
         sys.exit(0)
-
-    
 
 ## Check the syntax of elif statement
 def elifStatement():
     global token
-    
     condition()
     if (token.recognized_token == ":"):
         token = nextToken()
@@ -396,21 +289,19 @@ def elifStatement():
             statement()
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
-                    print("DEBUG: elifStatement()")
-                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
+                    print("DEBUG: ifStatement()")
+                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed.")
                     sys.exit(0)
                 statement()
                 token = nextToken()
-            token = nextToken()
         else:
-            print("Syntax error in line " + str(token.line_number) + ": #{ expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-            sys.exit(0)
+            statement()
     else:
-        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved.")
         sys.exit(0)
     if (token.recognized_token == "elif"):
         elifStatement()
-    if (token.recognized_token == "else"):
+    elif (token.recognized_token == "else"):
         elseStatement()
 
 ## Check the syntax of else statement   
@@ -425,47 +316,43 @@ def elseStatement():
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: elseStatement()")
-                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
+                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed.")
                     sys.exit(0)
                 statement()
                 token = nextToken()
-            token = nextToken()
         else:
-            print("Syntax error in line " + str(token.line_number) + ": #{ expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-            sys.exit(0)
+            statement()
     else:
-        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved.")
         sys.exit(0)
 
 ## Check the syntax of if statement don't check for declarations
 def ifStatement():
     global token
-    check_line = token.line_number 
     condition()
     if (token.recognized_token == ":"):
         token = nextToken()
         if (token.recognized_token == "#{"):
             token = nextToken()
             statement()
+            
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: ifStatement()")
-                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
+                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed.")
                     sys.exit(0)
                 statement()
                 token = nextToken()
-            token = nextToken()
-        elif(check_line != token.line_number):
-            return
         else:
-            print("hi")
-            expression()
+            statement()
+            if (token.recognized_token == "#}"):
+                return
     else:
-        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.recognized_token + " recieved.")
         sys.exit(0)
     if (token.recognized_token == "elif"):
         elifStatement()
-    if (token.recognized_token == "else"):
+    elif (token.recognized_token == "else"):
         elseStatement()
 
 ## Check the syntax of while statement don't check for declarations
@@ -481,16 +368,15 @@ def whileStatement():
             while (token.recognized_token != "#}"):
                 if (token.token_type == "EOF"):
                     print("DEBUG: whileStatement()")
-                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed")
+                    print("Syntax error in line " + str(token.line_number) + ": Block started but never closed.")
                     sys.exit(0)
                 statement()
-                token = nextToken()
-            token = nextToken()
+                if (token.recognized_token != "#}"):
+                    token = nextToken()
         else:
-            print("Syntax error in line " + str(token.line_number) + ": #{ expected, but " + token.token_type + " " + token.recognized_token + " recieved")
-            sys.exit(0)
+            statement()
     else:
-        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved.")
         sys.exit(0)
 
 def globalStatement():
@@ -504,88 +390,63 @@ def globalStatement():
                 if (token.token_type == "IDENTIFIER"):
                     token = nextToken()
                 else:
-                    print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                    print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved.")
                     sys.exit(0)
         else:
-            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " " + token.recognized_token + " recieved.")
             sys.exit(0)
 
 def intStatement():
     global token
-    token = nextToken()
-    if (token.recognized_token == "("):
+    if (token.recognized_token == "int"):
         token = nextToken()
-        if (token.recognized_token == "input"):
+        if (token.recognized_token == "("):
             token = nextToken()
-            if (token.recognized_token == "("):
+            if (token.recognized_token == "input"):
                 token = nextToken()
-                if (token.recognized_token == ")"):
+                if (token.recognized_token == "("):
                     token = nextToken()
                     if (token.recognized_token == ")"):
                         token = nextToken()
+                        if (token.recognized_token == ")"):
+                            token = nextToken()
+                        else:
+                            print("Syntax error in line " + str(token.line_number-1) + ": \")\" expected, but " + token.token_type + " recieved.")
+                            sys.exit(0)
                     else:
-                        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+                        print("Syntax error in line " + str(token.line_number-1) + ": \")\" expected, but " + token.token_type + " recieved.")
                         sys.exit(0)
                 else:
-                    print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+                    print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.token_type + " recieved.")
                     sys.exit(0)
             else:
-                print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+                print("Syntax error in line " + str(token.line_number) + ": \"input\" expected, but " + token.token_type + " recieved.")
                 sys.exit(0)
         else:
-            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+            print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.recognized_token + " recieved.")
             sys.exit(0)
     else:
-        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": \"int\" expected, but " + token.recognized_token + " recieved.")
         sys.exit(0)
 
 def assignmentStatement():
     global token
-    global index
+    global token_index
     if (token.token_type == "IDENTIFIER"):
         token = nextToken()
         if (token.recognized_token == "="):
-            ## Check if the assignment value is correct with the function below
-            ## assignment()
             token = nextToken()
+            expression()
             if (token.recognized_token == "int"):
-                index -= 1
                 intStatement()
             else:
                 token = nextToken()
         else:
-            print("Syntax error in line " + str(token.line_number) + ": Invalid syntax, \"" + token.recognized_token + "\" not expected")
+            print("Syntax error in line " + str(token.line_number) + ": Invalid syntax, \"" + token.recognized_token + "\" not expected.")
             sys.exit(0)
     else:
-        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved.")
         sys.exit(0)
-
-def statement():
-    global token
-    global token_index
-    token = nextToken()
-    
-    if (token.recognized_token == "="):
-        token_index -= 2
-        token = nextToken()
-        assignmentStatement()
-    else:
-        token_index -= 2
-        token = nextToken()
-    if (token.recognized_token == "if"):
-        ifStatement()
-    
-    elif (token.recognized_token == "while"):
-        whileStatement()
-    elif (token.recognized_token == "print"):
-        #printStatement()
-        i = 0
-    elif (token.recognized_token == "return"):
-        
-        returnStatement()
-        
-    elif (token.recognized_token == "int"):
-        intStatement()
 
 def returnStatement():
     global token
@@ -594,24 +455,78 @@ def returnStatement():
     if(check_line != token.line_number):
         return
     expression()
-
-# def statements():
-#     token = nextToken()
     
-#     if(token.recognized_token == "#{"):
-#         block_init = token.line_number
-#         token = nextToken()
-#         statement()
-#         while (token.recognized_token != "#}"):
-#             if (token.token_type == "EOF"):
-#                 print("DEBUG: statements()")
-#                 print("Syntax error in line " + str(block_init) + ": Block started but never closed")
-#                 sys.exit(0)
-#             statement()
-#             token = nextToken()
-#     else:
-        
-#         statement()
+    if (invalidExpression("return")):
+        print(token.recognized_token)
+        print("hi")
+        print("Syntax error in line " + str(token.line_number) + ": Invalid syntax1.")
+        sys.exit(0)
+
+def printStatement():
+    global token
+    check_line = token.line_number
+    token = nextToken()
+    if (token.recognized_token == "("):
+        token = nextToken()
+        expression()
+        if (invalidExpression("print")):
+            print("Syntax error in line " + str(token.line_number) + ": Invalid syntax2.")
+            sys.exit(0)
+        if (token.recognized_token == ")"):
+            token = nextToken()
+        else:
+            print("Syntax error in line " + str(token.line_number) + ": \")\" expected, but \"" + token.recognized_token + "\" recieved.")
+            sys.exit(0)
+    else:
+        print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.recognized_token + " recieved.")
+    
+
+def statement():
+    global token
+    global token_index
+    token = nextToken()
+    if (token.recognized_token == "="):
+        token_index -= 2
+        token = nextToken()
+        assignmentStatement()
+        token_index -= 2
+        token = nextToken()
+    else:
+        token_index -= 2
+        token = nextToken()
+    if (token.recognized_token == "if"):
+        ifStatement()
+    elif (token.recognized_token == "while"):
+        whileStatement()
+    elif (token.recognized_token == "print"):
+        printStatement()
+        token_index -= 2
+        token = nextToken()
+    elif (token.recognized_token == "return"):
+        returnStatement()
+        token_index -= 1
+        token = nextToken()
+    elif (token.recognized_token == "int"):
+        intStatement()
+
+def defineVariables():
+    global token
+    global variables
+    check_line = token.line_number
+    if (token.token_type == "IDENTIFIER"):
+        variables.append(token.recognized_token)
+        token = nextToken()
+        while (token.recognized_token == ","):
+            token = nextToken()
+            if (token.token_type == "IDENTIFIER"):
+                variables.append(token.recognized_token)
+                token = nextToken()
+            else:
+                print("Syntax error in line " + str(check_line) + ": IDENTIFIER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
+                sys.exit(0)
+    else:
+        print("Syntax error in line " + str(check_line) + ": IDENTIFIER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
+        sys.exit(0)
     
 def declarations():
     global token
@@ -622,7 +537,6 @@ def declarations():
 def subPrograms():
     global token
     global functions
-    
     while (token.recognized_token == "def"):
         parameters = []
         token = nextToken()
@@ -641,107 +555,91 @@ def subPrograms():
                             parameters.append(token.recognized_token)
                             token = nextToken()
                         else:
-                            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+                            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                             sys.exit(0)
                 if (token.recognized_token == ")"):
                     functions.update({functionName: parameters})
                     token = nextToken()
                     if (token.recognized_token == ":"):
                         token = nextToken()
+                        line_number = token.line_number
                         if (token.recognized_token == "#{"):
                             token = nextToken()
                             declarations()
-                            globalStatement()
                             subPrograms()
-                            
+                            globalStatement()
                             statement()
                             while (token.recognized_token != "#}"):
                                 if (token.token_type == "EOF"):
                                     print("DEBUG: subPrograms()")
-                                    print("Syntax error: Block \"#{\" started but never closed")
+                                    print("Syntax error in line " + str(line_number) + ": Block \"#{\" started but never closed.")
                                     sys.exit(0)
                                 statement()
                                 token = nextToken()
-                            token = nextToken()
+                                if (token.recognized_token == "#}"):
+                                    token = nextToken()
+                                    return
+                            else:
+                                token = nextToken()
                         else:
-                            print("Syntax error in line " + str(token.line_number) + ": #{ expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                            print("Syntax error in line " + str(token.line_number) + ": #{ expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                             sys.exit(0)
                     else:
-                        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                        print("Syntax error in line " + str(token.line_number) + ": SEPERATOR \":\" expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                         sys.exit(0)
+                else:
+                    print("Syntax error in line " + str(token.line_number) + ": \")\" expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
+                    sys.exit(0)
             else:
-                print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.token_type + " " + token.recognized_token + " recieved")
+                print("Syntax error in line " + str(token.line_number) + ": \"(\" expected, but " + token.token_type + " \"" + token.recognized_token + "\" recieved.")
                 sys.exit(0)
         else:
-            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
+            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but \"" + token.token_type + "\" recieved.")
             sys.exit(0)
 
 def mainProgram():
     global token
-    if (token.recognized_token == "#def"):
+    token = nextToken()
+    if (token.recognized_token == "main"):
         token = nextToken()
-        if (token.recognized_token == "main"):
-            token = nextToken()
-        else:
-            print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved")
-            sys.exit(0)
+        declarations()
+        statement()
     else:
-        print("Syntax error in line " + str(token.line_number) + ": You should define the main part of program")
+        print("Syntax error in line " + str(token.line_number) + ": IDENTIFIER expected, but " + token.token_type + " recieved.")
         sys.exit(0)
 
-def program():
-    # Create this function so it can recognize declaretions, functions and finally the main program of the code
+def syntaxAnalyzer():
     global token
+    global functions
     token = nextToken()
     declarations()
     subPrograms()
-    #mainProgram()
-
-## Syntax Analyzer
-def syntaxAnalyzer():
-    global variables
-    global functions
-    program()
-    
-        
-
-## The main function for all processes
-def startCompiling():
-    while (not eof_flag):
-        lexicalResult = lexicalAnalyzer()
-        #print(lexicalResult)
-        new_token = Token(lexicalResult[1], lexicalResult[0], lexicalResult[2])
-        tokens.append(new_token)
-    syntaxAnalyzer()
+    if (token.recognized_token != "#def"):
+        print("Syntax error in line " + str(token.line_number) + ": Unexpected token \"" + token.recognized_token + "\" recieved,You should define the main part of program.")
+        sys.exit(0)
+    mainProgram()
         
 ### Main Program
+def compiler(code):
+    global tokens
+    tokens = lexicalAnalyzer(code)
+    syntaxAnalyzer()
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python compiler.py [filename]")
+        return   
+
+    filename = sys.argv[1]
+    try:
+        with open(filename, 'r') as file:
+            input_code = file.read()
+            print("Start of the compilation process...")
+            compiler(input_code)
+            print("Compilation process completed successfully!")
+    except FileNotFoundError:
+        print("Error: File not found")
+
+### Main Program
 if __name__ == "__main__":
-    functions = {}
-    variables = []
-
-    code_line = 1
-    eof_flag = False
-    token_index = -1
-    token = ()
-    tokens = []
-    keywords = ("main", "def", "#def", "#int", "global", "if",
-                "elif", "else", "while", "print", "return",
-                "input", "int", "and", "or", "not")
-    
-
-    with open(sys.argv[1], 'r') as file:
-        lines = file.readlines()
-
-    while lines and lines[-1].strip() == '':
-        lines.pop()
-
-    with open(sys.argv[1], 'w') as file:
-        file.writelines(lines)
-    
-    file.close()
-    
-    code_file = open(sys.argv[1], "r")
-    print("Start Compiling...")
-    startCompiling()
-    print("Compilation Completed succesfully!")
-    code_file.close()
+    main()
